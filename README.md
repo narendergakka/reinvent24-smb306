@@ -19,7 +19,7 @@ Unleash the power of rapid prototyping on AWS. This session dives deep into how 
 
 ## Product Specification Generation -- Demo Application
 The sample application developed live part of the session.
-- **[Demo Application](https://github.com/narendergakka/reinvent24-smb306/demoapp**: 
+- **[Demo Application](https://github.com/narendergakka/reinvent24-smb306/tree/main/demoapp)**: 
 
 
 ---
