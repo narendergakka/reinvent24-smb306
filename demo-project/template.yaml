@@ -1,0 +1,170 @@
+Resources:
+  ProductApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: ProductApi
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /products:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductHandler.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        MaxAge: 5
+  ProductImages:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-productim-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  ProductImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ProductImages
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+          - Principal: '*'
+            Action: '*'
+            Effect: Deny
+            Resource:
+              - !GetAtt ProductImages.Arn
+              - !Sub ${ProductImages.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  ProductSpecifications:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: product_id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: product_id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  ProductHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: ProductHandler
+      CodeUri: src/products
+      Handler: com.aws.demo.product.handler.Handler::handleRequest
+      Runtime: java11
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          PRODUCTSPECIFICATIONS_TABLE_NAME: !Ref ProductSpecifications
+          PRODUCTSPECIFICATIONS_TABLE_ARN: !GetAtt ProductSpecifications.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProductSpecifications
+      Events:
+        ProductApiGETproducts:
+          Type: Api
+          Properties:
+            Path: /products
+            Method: GET
+            RestApiId: !Ref ProductApi
+      ReservedConcurrentExecutions: 1
+  ProductHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ProductHandler}
+  ImageHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: ImageHandler
+      CodeUri: src/products
+      Handler: com.aws.demo.image.handler.Handler::handleRequest
+      Runtime: java11
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        ProductImages:
+          Type: S3
+          Properties:
+            Bucket: !Ref ProductImages
+            Events:
+              - s3:ObjectCreated:*
+              - s3:ObjectRemoved:*
+      Environment:
+        Variables:
+          PRODUCTSPECIFICATIONS_TABLE_NAME: !Ref ProductSpecifications
+          PRODUCTSPECIFICATIONS_TABLE_ARN: !GetAtt ProductSpecifications.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProductSpecifications
+        - !Ref ImageHandlerPolicy
+      AutoPublishAlias: live
+      DeploymentPreference:
+        Type: AllAtOnce
+      ReservedConcurrentExecutions: 15
+  ImageHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ImageHandler}
+  ImageHandlerScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MinCapacity: 15
+      MaxCapacity: 15
+      ResourceId: !Sub function:${ImageHandler}:live
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/lambda.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_LambdaConcurrency
+      ScalableDimension: lambda:function:ProvisionedConcurrency
+      ServiceNamespace: lambda
+    DependsOn: ImageHandlerAliaslive
+  ImageHandlerScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: utilization
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ImageHandlerScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 0.7
+        PredefinedMetricSpecification:
+          PredefinedMetricType: LambdaProvisionedConcurrencyUtilization
+  ImageHandlerPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - arn:aws:bedrock:*:*:foundation-model/*
+              - arn:aws:bedrock:*:*:provisioned-model/*
+              - arn:aws:s3:::*
+              - arn:aws:s3:::*/*
+Transform: AWS::Serverless-2016-10-31

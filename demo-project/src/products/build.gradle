@@ -1,0 +1,26 @@
+apply plugin: 'java'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.amazonaws:aws-lambda-java-core:1.2.2'
+    implementation 'com.amazonaws:aws-lambda-java-events:3.11.0'
+    implementation 'com.google.code.gson:gson:2.10'
+    implementation group: 'software.amazon.awssdk', name: 's3', version: '2.28.21'
+    implementation group: 'software.amazon.awssdk', name: 'lambda', version: '2.28.21'
+    implementation group: 'software.amazon.awssdk', name: 'bedrockruntime', version: '2.28.21'
+    implementation group: 'software.amazon.awssdk', name: 'dynamodb', version: '2.28.21'
+
+}
+
+task buildZip(type: Zip) {
+    from compileJava
+    from processResources
+    into('lib') {
+        from configurations.compileClasspath
+    }
+}
+
+build.dependsOn buildZip
