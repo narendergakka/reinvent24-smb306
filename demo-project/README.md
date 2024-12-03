@@ -35,4 +35,11 @@
 2. Launch Visual Studio code and open the source code folder: File -> Open Folder..
 
 # Usage
-Refer session recording for details. 
+Run sam sync from the VS code terminal window for triggering the sam build and deploy. Here is the syntax -
+sam sync --stack-name <<stack-name>> --region <<region-name>>
+
+Refer session recording for more details. 
+
+# CleanUp
+Use sam delete for deleting the stack -
+sam delete --stack-name <<stack-name>> --region <<region-name>>
