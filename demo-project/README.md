@@ -23,6 +23,9 @@
 7.  Install Gradle
     https://gradle.org/install/
 
+8. Bedrock Model Access
+   Go to Bedrock in the AWS Management Console and Select **Model Access** from the left navigation. Enable access for Anthropic "Claude 3 Sonnet" model. Make sure the region is selected correctly where you are running this code.   
+
 
 # Setup Instructions
 
