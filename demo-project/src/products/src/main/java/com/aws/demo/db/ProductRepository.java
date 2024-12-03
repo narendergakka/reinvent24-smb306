@@ -19,16 +19,23 @@ import com.google.gson.JsonArray;
 
 public class ProductRepository {
 
-    private final Region region = Region.US_EAST_1;
-    private final DynamoDbClient dynamoDbClient = DynamoDbClient.builder()
-                .region(region)
-                .build();
+    private String tableName;
+    private DynamoDbClient dynamoDbClient;
     
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
-
-    private String tableName = null;
     
     public ProductRepository() {
+        Region region = Region.US_EAST_1;
+        String regionStr = System.getenv("AWS_REGION");
+        if (regionStr != null && !regionStr.trim().isEmpty()) {
+            region = Region.of(regionStr);
+        }
+        System.out.println("Selected Region : " + region.toString());
+
+        dynamoDbClient = DynamoDbClient.builder()
+                .region(region)
+                .build();
+
         tableName = System.getenv("PRODUCTSPECIFICATIONS_TABLE_NAME");
     }
 
@@ -63,13 +70,11 @@ public class ProductRepository {
     }
 
 
-    
-
     private String generateProductId() {
             // Generate a random UUID
             UUID uuid = UUID.randomUUID();
             return uuid.toString();
     }
        
-    }
+}
 
