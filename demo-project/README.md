@@ -43,4 +43,5 @@ Refer session recording for more details.
 
 # CleanUp
 Use sam delete for deleting the stack -
-sam delete --stack-name <<stack-name>> --region <<region-name>>
+
+sam delete --stack-name <<stack_name>> --region <<region_name>>
