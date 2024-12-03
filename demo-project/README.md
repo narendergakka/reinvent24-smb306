@@ -36,7 +36,8 @@
 
 # Usage
 Run sam sync from the VS code terminal window for triggering the sam build and deploy. Here is the syntax -
-sam sync --stack-name <<stack-name>> --region <<region-name>>
+
+sam sync --stack-name <<stack_name>> --region <<region_name>>
 
 Refer session recording for more details. 
 
